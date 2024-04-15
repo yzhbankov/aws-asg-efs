@@ -44,10 +44,10 @@ resource "aws_lb" "alb" {
 
 # Create a target group for the ALB
 resource "aws_lb_target_group" "target_group" {
-  name        = "${terraform.workspace}-yz-tg"
-  port        = 80     # Port where your instances are listening
-  protocol    = "HTTP" # Protocol used by your instances
-  vpc_id      = aws_vpc.web_server_vpc.id
+  name     = "${terraform.workspace}-yz-tg"
+  port     = 80     # Port where your instances are listening
+  protocol = "HTTP" # Protocol used by your instances
+  vpc_id   = aws_vpc.web_server_vpc.id
 
   health_check {
     path                = "/"

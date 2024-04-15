@@ -130,9 +130,9 @@ resource "aws_lb_target_group" "target_group" {
 
 # Attach the target group to the ALB
 resource "aws_lb_target_group_attachment" "target_group_attachment" {
-  count            = aws_autoscaling_group.asg.desired_capacity
+  count            = length(aws_autoscaling_group.asg.instances)
   target_group_arn = aws_lb_target_group.target_group.arn
-  target_id        = aws_autoscaling_group.asg.id
+  target_id        = aws_autoscaling_group.asg.instances[count.index].id
 }
 
 # Create a new ALB Target Group attachment

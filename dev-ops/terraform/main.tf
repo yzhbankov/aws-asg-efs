@@ -32,40 +32,41 @@ resource "aws_launch_template" "launch_template" {
   instance_type = "t2.micro"              # Example instance type, replace with your desired type
 
   # Define user data for the instance
-  user_data = <<-EOF
-    #!/bin/bash
-    # Install NFS utilities
-    yum -y install nginx
+  user_data = base64encode(<<EOF
+#!/bin/bash
+# Install NFS utilities
+yum -y install nginx
 
-    # Add configuration for /directory location
-    sudo sh -c 'cat <<EOF > /etc/nginx/default.d/directory.conf
-    location /directory {
-        alias /mnt/efs;
-        autoindex on;
-    }
-    EOF'
+# Add configuration for /directory location
+sudo sh -c 'cat <<EOF > /etc/nginx/default.d/directory.conf
+location /directory {
+    alias /mnt/efs;
+    autoindex on;
+}
+EOF'
 
-    # Test NGINX configuration
-    sudo nginx -t
+# Test NGINX configuration
+sudo nginx -t
 
-    # Start NGINX
-    sudo systemctl start nginx
+# Start NGINX
+sudo systemctl start nginx
 
-    # Enable NGINX to start on boot
-    sudo systemctl enable nginx
+# Enable NGINX to start on boot
+sudo systemctl enable nginx
 
-    # Install NFS utilities
-    yum -y install nfs-utils
+# Install NFS utilities
+yum -y install nfs-utils
 
-    # Create a directory to mount the EFS
-    mkdir /mnt/efs
+# Create a directory to mount the EFS
+mkdir /mnt/efs
 
-    # Mount the EFS filesystem
-    sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${aws_efs_file_system.efs.dns_name}:/ /mnt/efs
+# Mount the EFS filesystem
+sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${aws_efs_file_system.efs.dns_name}:/ /mnt/efs
 
-    # Add the EFS mount to /etc/fstab to mount on every reboot
-    echo "${aws_efs_file_system.efs.dns_name}:/ /mnt/efs nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 0 0" >> /etc/fstab
-  EOF
+# Add the EFS mount to /etc/fstab to mount on every reboot
+echo "${aws_efs_file_system.efs.dns_name}:/ /mnt/efs nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 0 0" >> /etc/fstab
+EOF
+  )
 }
 
 # Create an Auto Scaling Group

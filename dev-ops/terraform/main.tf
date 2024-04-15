@@ -8,12 +8,21 @@ resource "aws_efs_file_system" "efs" {
     # Configure automatic backups (optional)
     transition_to_ia = "AFTER_30_DAYS"
   }
+}
 
-  # Specify the availability zones where you want the EFS to be available
-  availability_zone_name = ["us-east-1a", "us-east-1b", "us-east-1c"]
+resource "aws_efs_mount_target" "alpha" {
+  file_system_id = aws_efs_file_system.efs.id
+  subnet_id      = aws_subnet.subnet_a.id
+}
 
-  # Associate the security group with the EFS
-  security_groups = [aws_security_group.efs_sg.id]
+resource "aws_efs_mount_target" "beta" {
+  file_system_id = aws_efs_file_system.efs.id
+  subnet_id      = aws_subnet.subnet_b.id
+}
+
+resource "aws_efs_mount_target" "gamma" {
+  file_system_id = aws_efs_file_system.efs.id
+  subnet_id      = aws_subnet.subnet_c.id
 }
 
 # Create a launch template

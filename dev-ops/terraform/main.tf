@@ -111,11 +111,11 @@ resource "aws_lb" "alb" {
 
 # Create a target group for the ALB
 resource "aws_lb_target_group" "target_group" {
-  name     = "${terraform.workspace}-yz-tg"
-  port     = 80     # Port where your instances are listening
-  protocol = "HTTP" # Protocol used by your instances
-
-  vpc_id = aws_vpc.web_server_vpc.id
+  name        = "${terraform.workspace}-yz-tg"
+  port        = 80     # Port where your instances are listening
+  protocol    = "HTTP" # Protocol used by your instances
+  target_type = "instance"
+  vpc_id      = aws_vpc.web_server_vpc.id
 
   health_check {
     path                = "/"
@@ -129,8 +129,14 @@ resource "aws_lb_target_group" "target_group" {
 }
 
 # Attach the target group to the ALB
-resource "aws_lb_target_group_attachment" "my_target_group_attachment" {
+resource "aws_lb_target_group_attachment" "target_group_attachment" {
   count            = aws_autoscaling_group.asg.desired_capacity
   target_group_arn = aws_lb_target_group.target_group.arn
   target_id        = aws_autoscaling_group.asg.id
+}
+
+# Create a new ALB Target Group attachment
+resource "aws_autoscaling_attachment" "autoscaling_attachment" {
+  autoscaling_group_name = aws_autoscaling_group.asg.id
+  lb_target_group_arn    = aws_lb_target_group.target_group.arn
 }

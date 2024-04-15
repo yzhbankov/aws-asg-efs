@@ -1,6 +1,6 @@
 # Create a new EFS file system with multi-AZ support
 resource "aws_efs_file_system" "efs" {
-  creation_token = "${terraform.workspace}-yz-efs"  # A unique name for your EFS file system
+  creation_token   = "${terraform.workspace}-yz-efs" # A unique name for your EFS file system
   performance_mode = "generalPurpose"
   throughput_mode  = "bursting"
 
@@ -19,8 +19,8 @@ resource "aws_efs_file_system" "efs" {
 # Create a launch template
 resource "aws_launch_template" "launch_template" {
   name_prefix   = "${terraform.workspace}-yz-asg-launch-template"
-  image_id      = "ami-051f8a213df8bc089"  # Amazon Linux 2 AMI ID
-  instance_type = "t2.micro"  # Example instance type, replace with your desired type
+  image_id      = "ami-051f8a213df8bc089" # Amazon Linux 2 AMI ID
+  instance_type = "t2.micro"              # Example instance type, replace with your desired type
 
   # Define user data for the instance
   user_data = <<-EOF
@@ -61,11 +61,11 @@ resource "aws_launch_template" "launch_template" {
 
 # Create an Auto Scaling Group
 resource "aws_autoscaling_group" "asg" {
-  name               = "${terraform.workspace}-yz-asg"
-  min_size           = 1
-  desired_capacity   = 1
-  max_size           = 3
-  vpc_zone_identifier = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id, aws_subnet.subnet_c.id]  # Add your subnet IDs here
+  name                = "${terraform.workspace}-yz-asg"
+  min_size            = 1
+  desired_capacity    = 1
+  max_size            = 3
+  vpc_zone_identifier = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id, aws_subnet.subnet_c.id] # Add your subnet IDs here
 
   # Use the launch template created above
   launch_template {
@@ -95,17 +95,17 @@ resource "aws_autoscaling_policy" "cpu_scaling_policy" {
 # Create an Application Load Balancer (ALB)
 resource "aws_lb" "alb" {
   name               = "${terraform.workspace}-yz-alb"
-  internal           = false  # Set to true if internal ALB
+  internal           = false # Set to true if internal ALB
   load_balancer_type = "application"
   subnets            = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id, aws_subnet.subnet_c.id]
-  security_groups    = [aws_security_group.web_server_sg.id]  # Attach your web server security group
+  security_groups    = [aws_security_group.web_server_sg.id] # Attach your web server security group
 }
 
 # Create a target group for the ALB
 resource "aws_lb_target_group" "target_group" {
   name     = "${terraform.workspace}-yz-tg"
-  port     = 80  # Port where your instances are listening
-  protocol = "HTTP"  # Protocol used by your instances
+  port     = 80     # Port where your instances are listening
+  protocol = "HTTP" # Protocol used by your instances
 
   vpc_id = aws_vpc.web_server_vpc.id
 

@@ -4,6 +4,7 @@ resource "aws_efs_file_system" "efs" {
   performance_mode = "generalPurpose"
   throughput_mode  = "bursting"
 
+  #todo: make encrypted
   lifecycle_policy {
     # Configure automatic backups (optional)
     transition_to_ia = "AFTER_30_DAYS"
@@ -87,10 +88,7 @@ resource "aws_autoscaling_group" "asg" {
 # Create a scaling policy based on CPU utilization
 resource "aws_autoscaling_policy" "cpu_scaling_policy" {
   name                   = "scale-on-cpu"
-  scaling_adjustment     = 1
-  adjustment_type        = "ChangeInCapacity"
-  cooldown               = 60
-  policy_type            = "SimpleScaling"
+  policy_type            = "TargetTrackingScaling" # Use target tracking scaling policy
   autoscaling_group_name = aws_autoscaling_group.asg.name
 
   target_tracking_configuration {
@@ -132,6 +130,7 @@ resource "aws_lb_target_group" "target_group" {
 
 # Attach the target group to the ALB
 resource "aws_lb_target_group_attachment" "my_target_group_attachment" {
+  count            = aws_autoscaling_group.asg.desired_capacity
   target_group_arn = aws_lb_target_group.target_group.arn
   target_id        = aws_autoscaling_group.asg.id
 }

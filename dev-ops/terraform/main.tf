@@ -27,12 +27,6 @@ resource "aws_efs_mount_target" "gamma" {
 }
 
 
-
-
-
-
-
-
 # Create an Application Load Balancer (ALB)
 resource "aws_lb" "alb" {
   name               = "${terraform.workspace}-yz-alb"
@@ -69,15 +63,6 @@ resource "aws_lb_listener" "sh_front_end" {
     target_group_arn = aws_lb_target_group.target_group.arn
   }
 }
-
-
-
-
-
-
-
-
-
 
 # Create a launch template
 resource "aws_launch_template" "launch_template" {

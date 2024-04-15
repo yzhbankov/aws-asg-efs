@@ -26,6 +26,59 @@ resource "aws_efs_mount_target" "gamma" {
   subnet_id      = aws_subnet.subnet_c.id
 }
 
+
+
+
+
+
+
+
+# Create an Application Load Balancer (ALB)
+resource "aws_lb" "alb" {
+  name               = "${terraform.workspace}-yz-alb"
+  internal           = false # Set to true if internal ALB
+  load_balancer_type = "application"
+  subnets            = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id, aws_subnet.subnet_c.id]
+  security_groups    = [aws_security_group.web_server_sg.id] # Attach your web server security group
+}
+
+# Create a target group for the ALB
+resource "aws_lb_target_group" "target_group" {
+  name        = "${terraform.workspace}-yz-tg"
+  port        = 80     # Port where your instances are listening
+  protocol    = "HTTP" # Protocol used by your instances
+  vpc_id      = aws_vpc.web_server_vpc.id
+
+  health_check {
+    path                = "/"
+    protocol            = "HTTP"
+    matcher             = "200"
+    interval            = 30
+    timeout             = 10
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+  }
+}
+
+resource "aws_lb_listener" "sh_front_end" {
+  load_balancer_arn = aws_lb.alb.arn
+  port              = "80"
+  protocol          = "HTTP"
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.target_group.arn
+  }
+}
+
+
+
+
+
+
+
+
+
+
 # Create a launch template
 resource "aws_launch_template" "launch_template" {
   name_prefix   = "${terraform.workspace}-yz-asg-launch-template"
@@ -78,6 +131,9 @@ resource "aws_autoscaling_group" "asg" {
   max_size            = 3
   vpc_zone_identifier = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id, aws_subnet.subnet_c.id] # Add your subnet IDs here
 
+  # Connect to the target group
+  target_group_arns = [aws_lb_target_group.target_group.arn]
+
   # Use the launch template created above
   launch_template {
     id      = aws_launch_template.launch_template.id
@@ -98,45 +154,4 @@ resource "aws_autoscaling_policy" "cpu_scaling_policy" {
 
     target_value = 50.0
   }
-}
-
-# Create an Application Load Balancer (ALB)
-resource "aws_lb" "alb" {
-  name               = "${terraform.workspace}-yz-alb"
-  internal           = false # Set to true if internal ALB
-  load_balancer_type = "application"
-  subnets            = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id, aws_subnet.subnet_c.id]
-  security_groups    = [aws_security_group.web_server_sg.id] # Attach your web server security group
-}
-
-# Create a target group for the ALB
-resource "aws_lb_target_group" "target_group" {
-  name        = "${terraform.workspace}-yz-tg"
-  port        = 80     # Port where your instances are listening
-  protocol    = "HTTP" # Protocol used by your instances
-  target_type = "instance"
-  vpc_id      = aws_vpc.web_server_vpc.id
-
-  health_check {
-    path                = "/"
-    protocol            = "HTTP"
-    matcher             = "200"
-    interval            = 30
-    timeout             = 10
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-  }
-}
-
-# Attach the target group to the ALB
-resource "aws_lb_target_group_attachment" "target_group_attachment" {
-  count            = length(aws_autoscaling_group.asg.instances)
-  target_group_arn = aws_lb_target_group.target_group.arn
-  target_id        = aws_autoscaling_group.asg.instances[count.index].id
-}
-
-# Create a new ALB Target Group attachment
-resource "aws_autoscaling_attachment" "autoscaling_attachment" {
-  autoscaling_group_name = aws_autoscaling_group.asg.id
-  lb_target_group_arn    = aws_lb_target_group.target_group.arn
 }

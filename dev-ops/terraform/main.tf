@@ -1,202 +1,127 @@
-resource "aws_ecs_cluster" "web_server_cluster" {
-  name = "${terraform.workspace}_yz_web_server_cluster"
-}
+# Create a new EFS file system with multi-AZ support
+resource "aws_efs_file_system" "efs" {
+  creation_token = "${terraform.workspace}-yz-efs"  # A unique name for your EFS file system
+  performance_mode = "generalPurpose"
+  throughput_mode  = "bursting"
 
-resource "aws_ecs_cluster_capacity_providers" "capacity_providers" {
-  cluster_name       = aws_ecs_cluster.web_server_cluster.name
-  capacity_providers = ["FARGATE"]
-
-  default_capacity_provider_strategy {
-    base              = 1
-    weight            = 100
-    capacity_provider = "FARGATE"
-  }
-}
-
-resource "aws_iam_role" "ecs_task_role" {
-  name = "${terraform.workspace}_yz_ecs_task_role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = "sts:AssumeRole",
-        Effect = "Allow",
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com",
-        },
-      },
-    ],
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "docdb_policy_attachment" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonDocDBFullAccess"
-  role       = aws_iam_role.ecs_task_role.name
-}
-
-resource "aws_iam_role_policy_attachment" "elasticahe_policy_attachment" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonElastiCacheFullAccess"
-  role       = aws_iam_role.ecs_task_role.name
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_task_policy_attachment" {
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-  role       = aws_iam_role.ecs_task_role.name
-}
-
-resource "aws_ecs_task_definition" "web_server_task" {
-  family                   = "${terraform.workspace}-yz-web-server-task"
-  task_role_arn            = aws_iam_role.ecs_task_role.arn
-  execution_role_arn       = aws_iam_role.ecs_task_role.arn
-  cpu                      = 1024
-  memory                   = 2048
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-
-  runtime_platform {
-    operating_system_family = "LINUX"
-    cpu_architecture        = "X86_64"
+  lifecycle_policy {
+    # Configure automatic backups (optional)
+    transition_to_ia = "AFTER_30_DAYS"
   }
 
-  container_definitions = jsonencode([
-    {
-      name   = "${terraform.workspace}-yz-web-server-container"
-      image  = var.DOCKER_IMAGE
-      cpu    = 1024
-      memory = 2048
-      portMappings = [
-        {
-          containerPort = var.DOCKER_PORT,
-          protocol      = "tcp",
-          appProtocol   = "http"
-        }
-      ]
-      environment = [
-        {
-          name  = "DATABASE_CONNECTION_URI",
-          value = "mongodb://${var.MONGO_USER}:${var.MONGO_PWD}@${aws_docdbelastic_cluster.mongodb_cluster.endpoint}?ssl=true&retryWrites=false"
-        },
-        {
-          name  = "REDIS_HOST",
-          value = aws_elasticache_serverless_cache.redis_cluster.endpoint[0].address
-        }
-      ]
-      logConfiguration : {
-        logDriver : "awslogs",
-        options : {
-          awslogs-group : "${aws_cloudwatch_log_group.ecs_log_group.name}",
-          awslogs-region : var.AWS_REGION, # Change to your desired AWS region
-          awslogs-stream-prefix : "ecs"
-        }
-      }
+  # Specify the availability zones where you want the EFS to be available
+  availability_zone_name = ["us-east-1a", "us-east-1b", "us-east-1c"]
+
+  # Associate the security group with the EFS
+  security_groups = [aws_security_group.efs_sg.id]
+}
+
+# Create a launch template
+resource "aws_launch_template" "launch_template" {
+  name_prefix   = "${terraform.workspace}-yz-asg-launch-template"
+  image_id      = "ami-051f8a213df8bc089"  # Amazon Linux 2 AMI ID
+  instance_type = "t2.micro"  # Example instance type, replace with your desired type
+
+  # Define user data for the instance
+  user_data = <<-EOF
+    #!/bin/bash
+    # Install NFS utilities
+    yum -y install nginx
+
+    # Add configuration for /directory location
+    sudo sh -c 'cat <<EOF > /etc/nginx/default.d/directory.conf
+    location /directory {
+        alias /mnt/efs;
+        autoindex on;
     }
-  ])
+    EOF'
+
+    # Test NGINX configuration
+    sudo nginx -t
+
+    # Start NGINX
+    sudo systemctl start nginx
+
+    # Enable NGINX to start on boot
+    sudo systemctl enable nginx
+
+    # Install NFS utilities
+    yum -y install nfs-utils
+
+    # Create a directory to mount the EFS
+    mkdir /mnt/efs
+
+    # Mount the EFS filesystem
+    sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${aws_efs_file_system.efs.dns_name}:/ /mnt/efs
+
+    # Add the EFS mount to /etc/fstab to mount on every reboot
+    echo "${aws_efs_file_system.efs.dns_name}:/ /mnt/efs nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 0 0" >> /etc/fstab
+  EOF
 }
 
-resource "aws_cloudwatch_log_group" "ecs_log_group" {
-  name              = "/ecs/${terraform.workspace}-yz-web-server-task"
-  retention_in_days = 7
+# Create an Auto Scaling Group
+resource "aws_autoscaling_group" "asg" {
+  name               = "${terraform.workspace}-yz-asg"
+  min_size           = 1
+  desired_capacity   = 1
+  max_size           = 3
+  vpc_zone_identifier = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id, aws_subnet.subnet_c.id]  # Add your subnet IDs here
+
+  # Use the launch template created above
+  launch_template {
+    id      = aws_launch_template.launch_template.id
+    version = "$Latest"
+  }
 }
 
-resource "aws_lb_target_group" "web_server_target_group" {
-  name        = "${terraform.workspace}-yz-target-group"
-  port        = 80
-  protocol    = "HTTP"
-  vpc_id      = aws_vpc.web_server_vpc.id
-  target_type = "ip"
+# Create a scaling policy based on CPU utilization
+resource "aws_autoscaling_policy" "cpu_scaling_policy" {
+  name                   = "scale-on-cpu"
+  scaling_adjustment     = 1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 60
+  policy_type            = "SimpleScaling"
+  autoscaling_group_name = aws_autoscaling_group.asg.name
+
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+
+    target_value = 50.0
+  }
+}
+
+# Create an Application Load Balancer (ALB)
+resource "aws_lb" "alb" {
+  name               = "${terraform.workspace}-yz-alb"
+  internal           = false  # Set to true if internal ALB
+  load_balancer_type = "application"
+  subnets            = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id, aws_subnet.subnet_c.id]
+  security_groups    = [aws_security_group.web_server_sg.id]  # Attach your web server security group
+}
+
+# Create a target group for the ALB
+resource "aws_lb_target_group" "target_group" {
+  name     = "${terraform.workspace}-yz-tg"
+  port     = 80  # Port where your instances are listening
+  protocol = "HTTP"  # Protocol used by your instances
+
+  vpc_id = aws_vpc.web_server_vpc.id
 
   health_check {
+    path                = "/"
+    protocol            = "HTTP"
+    matcher             = "200"
+    interval            = 30
+    timeout             = 10
     healthy_threshold   = 2
     unhealthy_threshold = 2
-    timeout             = 5
-    interval            = 10
-    path                = "/"
-    matcher             = "200"
   }
 }
 
-resource "aws_ecs_service" "web_server_service" {
-  name             = "${terraform.workspace}-yz-web-server-service"
-  cluster          = aws_ecs_cluster.web_server_cluster.id
-  task_definition  = aws_ecs_task_definition.web_server_task.arn
-  platform_version = "LATEST"
-  desired_count    = 1
-
-  network_configuration {
-    subnets          = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id, aws_subnet.subnet_c.id]
-    security_groups  = [aws_security_group.web_server_sg.id]
-    assign_public_ip = true
-  }
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.web_server_target_group.arn
-    container_name   = "${terraform.workspace}-yz-web-server-container"
-    container_port   = var.DOCKER_PORT
-  }
-
-  capacity_provider_strategy {
-    capacity_provider = "FARGATE"
-    base              = 0
-    weight            = 1
-  }
-
-  deployment_controller {
-    type = "ECS"
-  }
-
-  deployment_maximum_percent         = 200
-  deployment_minimum_healthy_percent = 100
-
-  lifecycle {
-    ignore_changes = [desired_count]
-  }
-
-  depends_on = [aws_ecs_task_definition.web_server_task]
-}
-
-resource "aws_lb" "web_server_load_balancer" {
-  name               = "${terraform.workspace}-yz-load-balancer"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.web_server_sg.id]
-  subnets            = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id, aws_subnet.subnet_c.id]
-
-  tags = {
-    Name = "Web server load balancer"
-  }
-}
-
-resource "aws_lb_listener" "web_server_alb_listener" {
-  load_balancer_arn = aws_lb.web_server_load_balancer.arn
-  port              = 80
-  protocol          = "HTTP"
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.web_server_target_group.arn
-  }
-}
-
-resource "aws_appautoscaling_policy" "ecs_scaling_policy" {
-  name               = "ecs-autoscaling-policy"
-  service_namespace  = "ecs"
-  scalable_dimension = "ecs:service:DesiredCount"
-  resource_id        = "service/${aws_ecs_cluster.web_server_cluster.name}/${aws_ecs_service.web_server_service.name}"
-  policy_type        = "TargetTrackingScaling"
-
-  target_tracking_scaling_policy_configuration {
-    predefined_metric_specification {
-      predefined_metric_type = "ECSServiceAverageCPUUtilization"
-    }
-    target_value       = 70
-    scale_in_cooldown  = 300
-    scale_out_cooldown = 300
-  }
-}
-
-resource "aws_appautoscaling_target" "ecs_scaling_target" {
-  max_capacity       = 3
-  min_capacity       = 1
-  resource_id        = "service/${aws_ecs_cluster.web_server_cluster.name}/${aws_ecs_service.web_server_service.name}"
-  service_namespace  = "ecs"
-  scalable_dimension = "ecs:service:DesiredCount"
+# Attach the target group to the ALB
+resource "aws_lb_target_group_attachment" "my_target_group_attachment" {
+  target_group_arn = aws_lb_target_group.target_group.arn
+  target_id        = aws_autoscaling_group.asg.id
 }

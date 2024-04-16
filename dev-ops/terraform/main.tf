@@ -31,8 +31,8 @@ resource "aws_lb" "alb" {
   name               = "${terraform.workspace}-yz-alb"
   internal           = false # Set to true if internal ALB
   load_balancer_type = "application"
-  subnets            = [aws_subnet.public_subnet_a.id, aws_subnet.public_subnet_b.id]
-  security_groups    = [aws_security_group.web_server_sg.id] # Attach your web server security group
+  subnets            = [aws_subnet.public_subnet_a.id, aws_subnet.public_subnet_b.id, aws_subnet.public_subnet_c.id]
+  security_groups    = [aws_security_group.alb_sg.id] # Attach your web server security group
 }
 
 # Create a target group for the ALB
@@ -40,7 +40,7 @@ resource "aws_lb_target_group" "target_group" {
   name     = "${terraform.workspace}-yz-tg"
   port     = 80     # Port where your instances are listening
   protocol = "HTTP" # Protocol used by your instances
-  vpc_id   = aws_vpc.web_server_vpc.id
+  vpc_id   = aws_vpc.my_vpc.id
 
   health_check {
     path                = "/"
@@ -68,7 +68,7 @@ resource "aws_launch_template" "launch_template" {
   name_prefix            = "${terraform.workspace}-yz-asg-launch-template"
   image_id               = "ami-051f8a213df8bc089" # Amazon Linux 2 AMI ID
   instance_type          = "t2.micro"              # Example instance type, replace with your desired type
-  vpc_security_group_ids = [aws_security_group.efs_sg.id, aws_security_group.web_server_sg.id]
+  vpc_security_group_ids = [aws_security_group.efs_sg.id, aws_security_group.asg_sg.id]
 
   # Define user data for the instance
   user_data = base64encode(<<EOF

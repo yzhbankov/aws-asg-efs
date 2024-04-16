@@ -55,7 +55,7 @@ resource "aws_route" "internet_gateway_route" {
 }
 
 resource "aws_eip" "nat_gateway_eip" {
-  vpc = true
+  domain = "vpc"
 }
 
 resource "aws_nat_gateway" "nat_gateway" {

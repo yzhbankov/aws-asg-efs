@@ -3,8 +3,8 @@ resource "aws_efs_file_system" "efs" {
   creation_token   = "${terraform.workspace}-yz-efs" # A unique name for your EFS file system
   performance_mode = "generalPurpose"
   throughput_mode  = "bursting"
+  encrypted        = true
 
-  #todo: make encrypted
   lifecycle_policy {
     # Configure automatic backups (optional)
     transition_to_ia = "AFTER_30_DAYS"
@@ -13,26 +13,25 @@ resource "aws_efs_file_system" "efs" {
 
 resource "aws_efs_mount_target" "alpha" {
   file_system_id = aws_efs_file_system.efs.id
-  subnet_id      = aws_subnet.subnet_a.id
+  subnet_id      = aws_subnet.private_subnet_a.id
 }
 
 resource "aws_efs_mount_target" "beta" {
   file_system_id = aws_efs_file_system.efs.id
-  subnet_id      = aws_subnet.subnet_b.id
+  subnet_id      = aws_subnet.private_subnet_b.id
 }
 
 resource "aws_efs_mount_target" "gamma" {
   file_system_id = aws_efs_file_system.efs.id
-  subnet_id      = aws_subnet.subnet_c.id
+  subnet_id      = aws_subnet.private_subnet_c.id
 }
-
 
 # Create an Application Load Balancer (ALB)
 resource "aws_lb" "alb" {
   name               = "${terraform.workspace}-yz-alb"
   internal           = false # Set to true if internal ALB
   load_balancer_type = "application"
-  subnets            = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id, aws_subnet.subnet_c.id]
+  subnets            = [aws_subnet.public_subnet_a.id, aws_subnet.public_subnet_b.id]
   security_groups    = [aws_security_group.web_server_sg.id] # Attach your web server security group
 }
 
@@ -115,7 +114,7 @@ resource "aws_autoscaling_group" "asg" {
   min_size            = 1
   desired_capacity    = 1
   max_size            = 3
-  vpc_zone_identifier = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id, aws_subnet.subnet_c.id] # Add your subnet IDs here
+  vpc_zone_identifier = [aws_subnet.private_subnet_a.id, aws_subnet.private_subnet_b.id, aws_subnet.private_subnet_c.id] # Add your subnet IDs here
 
   # Connect to the target group
   target_group_arns = [aws_lb_target_group.target_group.arn]
@@ -139,5 +138,37 @@ resource "aws_autoscaling_policy" "cpu_scaling_policy" {
     }
 
     target_value = 50.0
+  }
+}
+
+# Create a CloudFront distribution
+resource "aws_cloudfront_distribution" "cloud_front_distribution" {
+  origin {
+    domain_name = aws_lb.alb.dns_name
+    origin_id   = "${terraform.workspace}-yz-alb-origin"
+  }
+
+  enabled             = true
+  is_ipv6_enabled     = true
+  default_root_object = "index.html"
+
+  default_cache_behavior {
+    target_origin_id       = "${terraform.workspace}-yz-alb-origin"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD", "OPTIONS"]
+    min_ttl                = 0
+    default_ttl            = 3600
+    max_ttl                = 86400
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
   }
 }

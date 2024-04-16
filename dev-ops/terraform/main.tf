@@ -66,10 +66,10 @@ resource "aws_lb_listener" "sh_front_end" {
 
 # Create a launch template
 resource "aws_launch_template" "launch_template" {
-  name_prefix          = "${terraform.workspace}-yz-asg-launch-template"
-  image_id             = "ami-051f8a213df8bc089" # Amazon Linux 2 AMI ID
-  instance_type        = "t2.micro"              # Example instance type, replace with your desired type
-  security_group_names = [aws_security_group.efs_sg.name, aws_security_group.web_server_sg.name]
+  name_prefix            = "${terraform.workspace}-yz-asg-launch-template"
+  image_id               = "ami-051f8a213df8bc089" # Amazon Linux 2 AMI ID
+  instance_type          = "t2.micro"              # Example instance type, replace with your desired type
+  vpc_security_group_ids = [aws_security_group.efs_sg.id, aws_security_group.web_server_sg.id]
 
   # Define user data for the instance
   user_data = base64encode(<<EOF

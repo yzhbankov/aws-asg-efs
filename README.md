@@ -17,4 +17,5 @@ Scalable CMS Based on AWS ASG with EFS
 - Check GitHub actions and in case no issues detected proceed with the next step
 - Comment in pull request `/apply prod`, where `/apply` is the action for terraform and `prod` in workspace
 - Check GitHub action result for errors
+- To destroy all created infrastructure comment in pull request `/destroy prod`
 

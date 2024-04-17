@@ -189,15 +189,15 @@ resource "aws_cloudfront_cache_policy" "optimized" {
   parameters_in_cache_key_and_forwarded_to_origin {
 
     cookies_config {
-      cookie_behavior = "whitelist"
+      cookie_behavior = "none"
     }
 
     headers_config {
-      header_behavior = "whitelist"
+      header_behavior = "none"
     }
 
     query_strings_config {
-      query_string_behavior = "whitelist"
+      query_string_behavior = "none"
     }
   }
 }

@@ -140,3 +140,65 @@ resource "aws_autoscaling_policy" "cpu_scaling_policy" {
     target_value = 50.0
   }
 }
+
+# Create CloudFront distribution
+resource "aws_cloudfront_distribution" "distribution" {
+  origin {
+    domain_name = aws_lb.alb.dns_name
+    origin_id   = "${terraform.workspace}-yz-origin-id"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 80
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  enabled             = true
+  default_root_object = "index.html"
+
+  # HTTP-only access
+  default_cache_behavior {
+    target_origin_id = "${terraform.workspace}-yz-origin-id"
+
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD", "OPTIONS"]
+
+    # Caching optimized cache policy
+    cache_policy_id = aws_cloudfront_cache_policy.optimized.id
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
+}
+
+resource "aws_cloudfront_cache_policy" "optimized" {
+  name        = "OptimizedCachePolicy"
+  default_ttl = 3600
+  max_ttl     = 86400
+  min_ttl     = 1
+
+  parameters_in_cache_key_and_forwarded_to_origin {
+
+    cookies_config {
+      cookie_behavior = "none"
+    }
+
+    headers_config {
+      header_behavior = "none"
+    }
+
+    query_strings_config {
+      query_string_behavior = "none"
+    }
+  }
+}

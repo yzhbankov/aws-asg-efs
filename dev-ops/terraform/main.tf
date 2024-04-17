@@ -176,7 +176,9 @@ resource "aws_cloudfront_distribution" "distribution" {
     }
   }
 
-  viewer_certificate {}
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
 }
 
 resource "aws_cloudfront_cache_policy" "optimized" {

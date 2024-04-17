@@ -180,22 +180,24 @@ resource "aws_cloudfront_distribution" "distribution" {
   viewer_certificate {}
 }
 
-# Create caching optimized cache policy
 resource "aws_cloudfront_cache_policy" "optimized" {
   name        = "OptimizedCachePolicy"
   default_ttl = 3600
   max_ttl     = 86400
-  min_ttl     = 0
+  min_ttl     = 1
 
-  parameter {
-    min_ttl_behavior     = "allow"
-    max_ttl_behavior     = "allow"
-    default_ttl_behavior = "useMaxTtl"
-    forwarded_values {
-      query_string = false
-      cookies {
-        forward = "none"
-      }
+  parameters_in_cache_key_and_forwarded_to_origin {
+
+    cookies_config {
+      cookie_behavior = "whitelist"
+    }
+
+    headers_config {
+      header_behavior = "whitelist"
+    }
+
+    query_strings_config {
+      query_string_behavior = "whitelist"
     }
   }
 }

@@ -151,7 +151,7 @@ resource "aws_cloudfront_distribution" "distribution" {
       http_port              = 80
       https_port             = 80
       origin_protocol_policy = "http-only"
-      origin_ssl_protocols   = []
+      origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
 

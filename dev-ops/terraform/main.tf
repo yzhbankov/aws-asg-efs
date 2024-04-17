@@ -182,14 +182,14 @@ resource "aws_cloudfront_distribution" "distribution" {
 
 # Create caching optimized cache policy
 resource "aws_cloudfront_cache_policy" "optimized" {
-  name               = "OptimizedCachePolicy"
-  default_ttl        = 3600
-  max_ttl            = 86400
-  min_ttl            = 0
+  name        = "OptimizedCachePolicy"
+  default_ttl = 3600
+  max_ttl     = 86400
+  min_ttl     = 0
 
   parameter {
-    min_ttl_behavior = "allow"
-    max_ttl_behavior = "allow"
+    min_ttl_behavior     = "allow"
+    max_ttl_behavior     = "allow"
     default_ttl_behavior = "useMaxTtl"
     forwarded_values {
       query_string = false

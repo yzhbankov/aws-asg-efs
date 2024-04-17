@@ -145,7 +145,7 @@ resource "aws_autoscaling_policy" "cpu_scaling_policy" {
 resource "aws_cloudfront_distribution" "distribution" {
   origin {
     domain_name = aws_lb.alb.dns_name
-    origin_id   = "myOrigin"
+    origin_id   = aws_lb.alb.id
   }
 
   enabled             = true

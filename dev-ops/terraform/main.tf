@@ -145,7 +145,7 @@ resource "aws_autoscaling_policy" "cpu_scaling_policy" {
 resource "aws_cloudfront_distribution" "distribution" {
   origin {
     domain_name = aws_lb.alb.dns_name
-    origin_id   = aws_lb.alb.id
+    origin_id   = "${terraform.workspace}-yz-origin-id"
   }
 
   enabled             = true
@@ -153,7 +153,7 @@ resource "aws_cloudfront_distribution" "distribution" {
 
   # HTTP-only access
   default_cache_behavior {
-    target_origin_id = "myOriginId"
+    target_origin_id = "${terraform.workspace}-yz-origin-id"
 
     forwarded_values {
       query_string = false

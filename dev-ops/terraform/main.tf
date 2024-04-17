@@ -140,3 +140,62 @@ resource "aws_autoscaling_policy" "cpu_scaling_policy" {
     target_value = 50.0
   }
 }
+
+# Create CloudFront distribution
+resource "aws_cloudfront_distribution" "distribution" {
+  origin {
+    domain_name = aws_lb.alb.dns_name
+    origin_id   = "myOrigin"
+  }
+
+  enabled             = true
+  default_root_object = "index.html"
+
+  # HTTP-only access
+  default_cache_behavior {
+    target_origin_id = "myOriginId"
+
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD", "OPTIONS"]
+
+    # Caching optimized cache policy
+    cache_policy_id = aws_cloudfront_cache_policy.optimized.id
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {}
+}
+
+# Create caching optimized cache policy
+resource "aws_cloudfront_cache_policy" "optimized" {
+  name               = "OptimizedCachePolicy"
+  default_ttl        = 3600
+  max_ttl            = 86400
+  min_ttl            = 0
+
+  parameter {
+    min_ttl_behavior = "allow"
+    max_ttl_behavior = "allow"
+    default_ttl_behavior = "useMaxTtl"
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+  }
+}

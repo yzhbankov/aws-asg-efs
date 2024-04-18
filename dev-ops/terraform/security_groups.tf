@@ -35,7 +35,7 @@ resource "aws_security_group" "asg_sg" {
     to_port         = 80
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
-    cidr_blocks     = ["0.0.0.0/0"]
+    cidr_blocks     = [aws_vpc.my_vpc.cidr_block]
   }
 
   egress {

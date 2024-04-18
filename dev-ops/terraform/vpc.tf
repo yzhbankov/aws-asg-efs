@@ -5,42 +5,42 @@ resource "aws_vpc" "my_vpc" {
 resource "aws_subnet" "public_subnet_a" {
   vpc_id                  = aws_vpc.my_vpc.id
   cidr_block              = "10.0.1.0/24"
-  availability_zone       = "us-east-1a"
+  availability_zone       = var.AZ_A
   map_public_ip_on_launch = true
 }
 
 resource "aws_subnet" "public_subnet_b" {
   vpc_id                  = aws_vpc.my_vpc.id
   cidr_block              = "10.0.2.0/24"
-  availability_zone       = "us-east-1b"
+  availability_zone       = var.AZ_B
   map_public_ip_on_launch = true
 }
 
 resource "aws_subnet" "public_subnet_c" {
   vpc_id                  = aws_vpc.my_vpc.id
   cidr_block              = "10.0.3.0/24"
-  availability_zone       = "us-east-1c"
+  availability_zone       = var.AZ_C
   map_public_ip_on_launch = true
 }
 
 resource "aws_subnet" "private_subnet_a" {
   vpc_id                  = aws_vpc.my_vpc.id
   cidr_block              = "10.0.4.0/24"
-  availability_zone       = "us-east-1a" # Change to your desired AZ
+  availability_zone       = var.AZ_A
   map_public_ip_on_launch = false
 }
 
 resource "aws_subnet" "private_subnet_b" {
   vpc_id                  = aws_vpc.my_vpc.id
   cidr_block              = "10.0.5.0/24"
-  availability_zone       = "us-east-1b" # Change to your desired AZ
+  availability_zone       = var.AZ_B
   map_public_ip_on_launch = false
 }
 
 resource "aws_subnet" "private_subnet_c" {
   vpc_id                  = aws_vpc.my_vpc.id
   cidr_block              = "10.0.6.0/24"
-  availability_zone       = "us-east-1c" # Change to your desired AZ
+  availability_zone       = var.AZ_C
   map_public_ip_on_launch = false
 }
 
@@ -68,7 +68,7 @@ resource "aws_route_table" "private_route_table" {
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat_gateway.id # Specify the ID of the NAT Gateway
+    nat_gateway_id = aws_nat_gateway.nat_gateway.id
   }
 }
 

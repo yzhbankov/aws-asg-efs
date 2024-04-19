@@ -79,6 +79,11 @@ yum -y install nginx
 
 # Add configuration for /directory location
 sudo sh -c 'cat <<EOF > /etc/nginx/default.d/directory.conf
+location / {
+        add_header Content-Type text/plain;
+        return 200 "Hello from \$hostname.\\n";
+}
+
 location /directory {
     alias /mnt/efs;
     autoindex on;

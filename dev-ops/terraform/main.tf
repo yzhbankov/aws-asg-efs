@@ -118,7 +118,7 @@ EOF
 resource "aws_autoscaling_group" "asg" {
   name                = "${terraform.workspace}-yz-asg"
   min_size            = 1
-  desired_capacity    = 1
+  desired_capacity    = 2
   max_size            = 3
   vpc_zone_identifier = [aws_subnet.private_subnet_a.id, aws_subnet.private_subnet_b.id, aws_subnet.private_subnet_c.id] # Add your subnet IDs here
 

@@ -3,7 +3,7 @@ data "aws_ec2_managed_prefix_list" "cloudfront" {
 }
 
 resource "aws_security_group" "elb_sg" {
-  name        = "${terraform.workspace}-yz-alb-sg"
+  name        = "${terraform.workspace}-yz-elb-sg"
   description = "Security group for ALB"
   vpc_id      = aws_vpc.my_vpc.id
 

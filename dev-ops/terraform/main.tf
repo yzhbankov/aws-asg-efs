@@ -197,7 +197,11 @@ resource "aws_cloudfront_cache_policy" "optimized" {
     }
 
     headers_config {
-      header_behavior = "none"
+      header_behavior = "whitelist"
+
+      headers {
+        items = ["Host"]
+      }
     }
 
     query_strings_config {

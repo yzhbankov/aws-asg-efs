@@ -1,5 +1,5 @@
-data "aws_ip_ranges" "cloudfront" {
-  services = ["cloudfront"]
+data "aws_prefix_list" "cloudfront" {
+  prefix_list_id = aws_cloudfront_distribution.cloudfront_distribution.id
 }
 
 resource "aws_security_group" "alb_sg" {
@@ -11,14 +11,14 @@ resource "aws_security_group" "alb_sg" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = data.aws_ip_ranges.cloudfront.cidr_blocks
+    cidr_blocks = [data.aws_prefix_list.cloudfront.prefix_list_id]
   }
 
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = data.aws_ip_ranges.cloudfront.cidr_blocks
+    cidr_blocks = [data.aws_prefix_list.cloudfront.prefix_list_id]
   }
 
   egress {

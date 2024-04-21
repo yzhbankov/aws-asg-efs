@@ -32,7 +32,7 @@ resource "aws_lb" "alb" {
   internal           = false
   load_balancer_type = "application"
   subnets            = [aws_subnet.public_subnet_a.id, aws_subnet.public_subnet_b.id, aws_subnet.public_subnet_c.id]
-  security_groups    = [aws_security_group.alb_sg.id]
+  security_groups    = [aws_security_group.elb_sg.id]
 }
 
 # Create a target group for the ALB

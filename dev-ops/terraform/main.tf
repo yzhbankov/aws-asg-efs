@@ -11,17 +11,17 @@ resource "aws_efs_file_system" "efs" {
   }
 }
 
-resource "aws_efs_mount_target" "alpha" {
+resource "aws_efs_mount_target" "mount_target_a" {
   file_system_id = aws_efs_file_system.efs.id
   subnet_id      = aws_subnet.private_subnet_a.id
 }
 
-resource "aws_efs_mount_target" "beta" {
+resource "aws_efs_mount_target" "mount_target_b" {
   file_system_id = aws_efs_file_system.efs.id
   subnet_id      = aws_subnet.private_subnet_b.id
 }
 
-resource "aws_efs_mount_target" "gamma" {
+resource "aws_efs_mount_target" "mount_target_c" {
   file_system_id = aws_efs_file_system.efs.id
   subnet_id      = aws_subnet.private_subnet_c.id
 }
@@ -69,7 +69,7 @@ resource "aws_launch_template" "launch_template" {
   name_prefix            = "${terraform.workspace}-yz-asg-launch-template"
   image_id               = var.AMI_ID
   instance_type          = "t2.micro"
-  vpc_security_group_ids = [aws_security_group.efs_sg.id, aws_security_group.asg_sg.id]
+  vpc_security_group_ids = [aws_security_group.asg_sg.id]
 
   # Define user data for the instance
   user_data = base64encode(<<EOF
